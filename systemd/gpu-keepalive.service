@@ -1,0 +1,23 @@
+[Unit]
+Description=gpu-keepalive (keep idle GPUs busy, yield to real work)
+After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+__IDENTITY__
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=__ROOT__
+ExecStart=__PYTHON__ -m gpu_keepalive.supervisor
+Restart=always
+RestartSec=10
+# Kill the whole cgroup so no worker can outlive the daemon.
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# Be polite to the dataloaders of whatever real job shows up.
+Nice=10
+
+[Install]
+WantedBy=__TARGET__

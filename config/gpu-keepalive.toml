@@ -1,0 +1,41 @@
+# gpu-keepalive configuration.
+#
+# Looked up in this order:
+#   $GPU_KEEPALIVE_CONFIG, ~/.config/gpu-keepalive.toml, /etc/gpu-keepalive.toml,
+#   then the copy shipped in the source tree.
+#
+# Apply changes with:  systemctl restart gpu-keepalive   (or --user)
+
+# ----- Monitoring -----
+poll_interval     = 5.0      # NVML sampling period, seconds
+idle_seconds      = 1800.0   # required run of idle time before filling in (30 min)
+idle_sm_threshold = 5        # foreign SM utilization below this % counts as idle
+                             # note: an inference server that is up but serving nothing
+                             # reports 0% and therefore counts as idle
+
+# ----- Memory ballast -----
+# ballast = (free - headroom - compute_reserve) * mem_fraction
+# Headroom is a fraction of total memory so one config fits every card size.
+mem_fraction       = 0.5
+headroom_fraction  = 0.10    # always leave this share of the card free
+headroom_min_gb    = 1.0     # ...but never less than this
+min_fill_gb        = 1.0     # below this, skip ballast and only burn compute
+compute_reserve_gb = 1.0     # budget for matmul buffers + CUDA context
+
+# ----- Synthetic workload -----
+target_util   = 0.70         # desired SM utilization; 1.0 costs real power and heat
+util_jitter   = 0.05         # per-slice jitter so the graph is not a dead flat line
+matmul_n      = 0            # matmul side length; 0 = size it from a timing probe
+slice_seconds = 1.0          # duty-cycle period
+
+# ----- Yielding -----
+foreign_mem_grow_mb = 256.0  # yield if foreign memory grows by this much
+kill_timeout        = 5.0    # SIGTERM -> SIGKILL grace period, seconds
+
+# ----- Scope -----
+# gpus         = [0, 1, 2, 3]   # omit for every non-MIG device
+exclude_gpus   = []
+
+# ----- Paths -----
+# state_dir = "/var/lib/gpu-keepalive"   # defaults to a user path when /var/lib is read-only
+log_level   = "INFO"

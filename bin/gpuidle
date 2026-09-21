@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Run gpuidle straight from a source checkout, without installing the package.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+exec "${GPU_KEEPALIVE_PYTHON:-python3}" -c 'import sys; sys.path.insert(0, sys.argv.pop(1)); from gpu_keepalive.cli import main; sys.exit(main())' "$ROOT" "$@"

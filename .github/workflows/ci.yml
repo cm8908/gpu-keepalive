@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: pip install .
+
+      # Runners have no GPU. Everything below is import- and logic-level only;
+      # NVML is imported but never initialised.
+      - name: Import every module
+        run: |
+          python -c "
+          import gpu_keepalive.config, gpu_keepalive.control, gpu_keepalive.nvml
+          import gpu_keepalive.supervisor, gpu_keepalive.cli, gpu_keepalive.gpu_run
+          import gpu_keepalive.worker
+          print('ok')
+          "
+
+      - name: CLI entry points respond
+        run: |
+          gpuidle --help > /dev/null
+          gpu-run --help > /dev/null
+
+      - name: Config defaults scale with card size
+        run: |
+          python -c "
+          from gpu_keepalive.config import Config, GIB
+          c = Config()
+          for total in (12, 24, 80, 183):
+              head = c.headroom_bytes(total * GIB) / GIB
+              assert 0 < head < total, (total, head)
+          print('ok')
+          "
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx install ruff
+      - run: ruff check .
+      - name: Shell syntax
+        run: bash -n install.sh bin/gpuidle bin/gpu-run
